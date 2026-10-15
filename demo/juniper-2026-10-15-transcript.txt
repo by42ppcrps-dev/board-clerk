@@ -1,0 +1,68 @@
+# FICTIONAL — Juniper Hollow Owners Association (no real people or organization). Regular board meeting 2026-10-15.
+# Extractor ignores lines that start with #. The next line is not a motion.
+# [00:59:59] Ghost Speaker: I move that we spend one million dollars on a private jet.
+
+[00:00:05] Dana Okafor: Good evening. This is the October fifteenth regular meeting of the Juniper Hollow Owners Association. This meeting is fictional and is held for a software demo.
+[00:00:18] Dana Okafor: I call the meeting to order. We will take roll call.
+[00:00:28] Dana Okafor: Dana Okafor, present.
+[00:00:34] Luis Trevino: Present.
+[00:00:38] Priya Raman: Here.
+[00:00:42] Mark Ellison: Present.
+[00:00:46] Grace Lindqvist: Present.
+[00:00:52] Tom Becker: Present, as community manager for Cascade Community Management. I am staff, not a voting director.
+[00:01:02] Dana Okafor: Five directors are present. Quorum is established. Tom Becker is with us from management.
+[00:01:12] Dana Okafor: The first item is approval of the agenda as posted.
+[00:01:20] Grace Lindqvist: I move that we approve the agenda as posted.
+[00:01:28] Mark Ellison: I'll second.
+[00:01:36] Dana Okafor: All in favor? Opposed? Hearing none opposed, the motion carries.
+[00:01:48] Dana Okafor: Next, a follow-up on the roof bid the board accepted in August.
+[00:02:00] Priya Raman: In August we accepted the Summit Ridge Roofing bid of forty-seven thousand nine hundred dollars, paid from reserves.
+[00:02:14] Priya Raman: Summit Ridge sent a change order for extra flashing and ridge vent work, two thousand four hundred dollars.
+[00:02:28] Mark Ellison: I am not wild about another roof charge this soon. The original bid should have included flashing.
+[00:02:40] Luis Trevino: The flashing was hidden damage. I would rather approve a small change order than stop the job.
+[00:02:52] Grace Lindqvist: Please keep it paid from reserves, not a special assessment.
+[00:03:04] Dana Okafor: Treasurer Raman, if you are ready, please make the motion.
+[00:03:12] Priya Raman: I move that we approve the Summit Ridge Roofing change order of two thousand four hundred dollars for extra flashing, paid from reserves.
+[00:03:26] Luis Trevino: I'll second.
+[00:03:34] Dana Okafor: It has been moved and seconded. We will take a roll call vote.
+[00:03:42] Dana Okafor: Aye.
+[00:03:46] Luis Trevino: Aye.
+[00:03:50] Priya Raman: Aye.
+[00:03:54] Mark Ellison: Nay.
+[00:03:58] Grace Lindqvist: Aye.
+[00:04:08] Dana Okafor: The motion passes, four to one. The change order is approved.
+[00:04:20] Dana Okafor: Next, a request for holiday lights at the clubhouse, eight hundred dollars.
+[00:04:32] Tom Becker: Management got one quote. I put it in the packet. I am not making the motion.
+[00:04:44] Dana Okafor: Would a director like to move?
+[00:04:52] Board Member: I move that we approve eight hundred dollars for holiday lights at the clubhouse.
+[00:05:02] Another Member: Second.
+[00:05:10] Dana Okafor: All in favor? Opposed? The motion carries. Please note the clerk could not hear who moved or seconded.
+[00:05:24] Mark Ellison: I want that recorded as needing confirmation. Nobody said a name.
+[00:05:36] Dana Okafor: So noted. Next item is a special assessment proposal.
+[00:05:48] Mark Ellison: Reserves are thin if we keep approving projects. I still want a small assessment.
+[00:06:00] Priya Raman: The reserve study visit is already scheduled. I would not assess before we see it.
+[00:06:12] Grace Lindqvist: Homeowners will object to an assessment this month.
+[00:06:24] Luis Trevino: I agree with the treasurer. Not this month.
+[00:06:32] Mark Ellison: I move that we impose a special assessment of three hundred dollars per lot.
+[00:06:44] Grace Lindqvist: Second.
+[00:06:52] Dana Okafor: Roll call on the special assessment.
+[00:06:58] Dana Okafor: Nay.
+[00:07:02] Luis Trevino: Nay.
+[00:07:06] Priya Raman: Nay.
+[00:07:10] Mark Ellison: Aye.
+[00:07:14] Grace Lindqvist: Nay.
+[00:07:22] Dana Okafor: The motion fails, one to four.
+[00:07:34] Dana Okafor: Next, the playground shade sail proposal. We do not have a second quote yet.
+[00:07:46] Luis Trevino: I would rather wait until November than guess a vendor tonight.
+[00:07:58] Priya Raman: Agreed. The packet is incomplete.
+[00:08:08] Grace Lindqvist: A shade sail is worth doing, just not tonight.
+[00:08:18] Luis Trevino: I move to table the playground shade sail proposal until the November meeting.
+[00:08:30] Priya Raman: I'll second.
+[00:08:40] Dana Okafor: All in favor of tabling? The motion is tabled.
+[00:08:52] Dana Okafor: Homeowner forum is empty tonight. No cards were submitted.
+[00:09:02] Tom Becker: I will send the roof change order to Summit Ridge tomorrow and copy the board.
+[00:09:14] Dana Okafor: Thank you. If there is nothing else, we can adjourn.
+[00:09:24] Grace Lindqvist: I move that we adjourn.
+[00:09:30] Mark Ellison: Second.
+[00:09:38] Dana Okafor: All in favor? The motion carries. We are adjourned.
+[00:09:46] Dana Okafor: Good night. This fictional meeting is over.

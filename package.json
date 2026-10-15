@@ -1,0 +1,26 @@
+{
+  "name": "board-clerk-mcp",
+  "version": "0.4.0",
+  "private": true,
+  "description": "MinutesDesk Board Clerk — Streamable-HTTP MCP server (Cloudflare Workers). Synthetic fixtures.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "node --test",
+    "test:engine": "node scripts/smoke-engine.mjs",
+    "test:mcp-local": "node scripts/smoke-mcp-local.mjs",
+    "test:remote": "node scripts/smoke-remote.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.0"
+  }
+}

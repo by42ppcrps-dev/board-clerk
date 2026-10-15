@@ -1,0 +1,18 @@
+# Board Clerk MCP worker. Per-board state is the BoardState durable object.
+# Do not commit account_id. `npx wrangler login` selects the account at deploy time.
+name = "lumegrid-board-clerk-v02"
+main = "src/index.js"
+compatibility_date = "2026-09-30"
+workers_dev = true
+preview_urls = false
+
+[[durable_objects.bindings]]
+name = "BOARD_STATE"
+class_name = "BoardState"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BoardState"]
+
+[vars]
+DEMO_MODE = "synthetic"

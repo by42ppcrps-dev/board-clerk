@@ -1,0 +1,24 @@
+node_modules/
+.wrangler/
+.mf/
+dist/
+*.log
+.DS_Store
+
+# Local secrets and Wrangler credentials. Never commit these.
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+secrets/
+*.local.toml
+wrangler.toml.bak
