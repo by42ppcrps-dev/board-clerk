@@ -931,7 +931,8 @@ const PAGE = `<!DOCTYPE html>
       };
     }
     if (/draft( last night's)? minutes/i.test(t)) return { kind: "draft" };
-    if (/approve( the)? minutes/i.test(t)) return { kind: "approve" };
+    if (/\\b(do\\s*n[o']?t|don't|dont|never|not|no|stop|cancel|hold off on|refuse to)\\b[^.?!]*\\bapprov/i.test(t) && /minutes/i.test(t)) return { kind: "noapprove" };
+    if (/^(please\\s+)?approve( the| last night's)? minutes[.!]?$/i.test(t)) return { kind: "approve" };
     var packet = t.match(/^board packet:?\\s*(.*)$/i);
     if (packet) return { kind: "packet", topic: (packet[1] || "").trim() || "roof" };
     return { kind: "decide", query: t };
@@ -1177,6 +1178,7 @@ const PAGE = `<!DOCTYPE html>
       else if (plan.kind === "pending") await showPending();
       else if (plan.kind === "draft") await showDraft(trimmed);
       else if (plan.kind === "approve") await runApprove();
+      else if (plan.kind === "noapprove") showAnswer("Okay. I did not approve the minutes. Nothing was changed.", false);
       else if (plan.kind === "packet") await showPacket(plan.topic);
       else await showDecision(plan.query);
     } catch (error) {

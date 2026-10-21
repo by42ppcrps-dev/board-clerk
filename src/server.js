@@ -205,6 +205,30 @@ export function meetingIdFor(org, title, meetingDate, existingIds) {
   return `${id}-${n}`.slice(0, 64);
 }
 
+// Same meeting re-ingested (same date, org, title, roster and extracted content)
+// must not create a suffixed copy that double counts motions and dollars.
+function meetingFingerprint(meeting) {
+  const { meeting_id, source_sha256, ...rest } = meeting || {};
+  return JSON.stringify(rest).split(String(meeting_id || "\u0000")).join("{id}");
+}
+
+export async function sourceDigest(transcript, roster) {
+  const text = String(transcript || "").replace(/\r\n?/g, "\n").trim() + "\n" + JSON.stringify(roster || []);
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// A stored meeting with the same source digest is the same meeting. Meetings
+// stored before digests existed fall back to identical extracted content.
+export function findDuplicateMeeting(ingested, meeting) {
+  const want = meetingFingerprint(meeting);
+  return (ingested || []).find((other) => {
+    if (other?.meeting_date !== meeting.meeting_date) return false;
+    if (other.source_sha256 && meeting.source_sha256) return other.source_sha256 === meeting.source_sha256;
+    return meetingFingerprint(other) === want;
+  });
+}
+
 function transcriptBytes(text) {
   return new TextEncoder().encode(String(text || "")).length;
 }
@@ -575,6 +599,30 @@ export function createBoardServer({ env, store } = {}) {
         org,
         title,
       });
+      meeting.source_sha256 = await sourceDigest(args.transcript, args.roster);
+      if (args.second_pass_motions == null) {
+        const duplicate = findDuplicateMeeting(loaded.ingested, meeting);
+        if (duplicate) {
+          const pendingDup = listPendingConfirmations([duplicate], duplicate.meeting_id, loaded.confirms || {});
+          const motionsDup = listMotions([duplicate], duplicate.meeting_id, {});
+          return toolResult(
+            `${duplicate.meeting_id} is already ingested with this exact transcript. Nothing was added or changed.`,
+            {
+              ok: true,
+              duplicate: true,
+              board_id,
+              meeting_id: duplicate.meeting_id,
+              meeting_date: duplicate.meeting_date,
+              org: duplicate.org,
+              title: duplicate.title,
+              motions: motionsDup.motions,
+              pending: pendingDup.pending,
+              count: pendingDup.count,
+              crosschecked: false,
+            },
+          );
+        }
+      }
       let crosschecked = false;
       if (args.second_pass_motions != null) {
         const checked = validateMotions(args.second_pass_motions);

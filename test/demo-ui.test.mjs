@@ -159,6 +159,63 @@ describe("demo page confirmation dropdown", () => {
     juniper.window.close();
   });
 
+  async function askTyped(dom, text) {
+    const doc = dom.window.document;
+    const input = doc.querySelector("#ask-form input[type=text]");
+    input.value = text;
+    doc.getElementById("answer").textContent = "";
+    doc.getElementById("ask-form").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+    await waitFor(dom, () => doc.getElementById("answer").textContent.trim().length > 0 && !doc.getElementById("ask-btn").disabled, "answer");
+    return doc.getElementById("answer").textContent;
+  }
+
+  it("never approves minutes on a negated command such as 'Do not approve the minutes'", async () => {
+    const dom = await openDemo("?reset=1");
+    const doc = dom.window.document;
+    const board_id = doc.getElementById("board-id").textContent;
+    for (const text of [
+      "Do not approve the minutes",
+      "Don't approve the minutes",
+      "do not approve the minutes yet.",
+      "Never approve the minutes without me",
+      "Please don't approve last night's minutes",
+      "Hold off on approving the minutes",
+    ]) {
+      const answer = await askTyped(dom, text);
+      assert.match(answer, /did not approve/i, text);
+      assert.equal(doc.getElementById("approved-banner").hidden, true, text);
+      const approvals = await mcpTool("list_approvals", { board_id });
+      assert.equal(approvals.approvals.length, 0, `${text}: ${JSON.stringify(approvals.approvals)}`);
+    }
+    // Unrelated sentences that merely contain the phrase are not approval commands.
+    await askTyped(dom, "Who said we should approve the minutes?");
+    assert.equal((await mcpTool("list_approvals", { board_id })).approvals.length, 0);
+    dom.window.close();
+  });
+
+  it("does not duplicate the meeting or roof spend when 'Ingest last night's meeting' is pressed twice", async () => {
+    const dom = await openDemo("?reset=1");
+    const doc = dom.window.document;
+    const board_id = doc.getElementById("board-id").textContent;
+    const ingestOnce = async () => {
+      doc.getElementById("answer").textContent = "";
+      doc.getElementById("ingest-meeting").click();
+      await waitFor(dom, () => /Ingested|already ingested/i.test(doc.getElementById("answer").textContent) && !doc.getElementById("ingest-meeting").disabled, "ingest");
+      return doc.getElementById("answer").textContent;
+    };
+    await ingestOnce();
+    const once = await mcpTool("prepare_board_packet", { board_id, topic: "roof" });
+    const meetingsOnce = (await mcpTool("list_meetings", { board_id })).meetings.length;
+    const second = await ingestOnce();
+    assert.match(second, /already ingested/i);
+    const twice = await mcpTool("prepare_board_packet", { board_id, topic: "roof" });
+    assert.equal(twice.approved_total_dollars, once.approved_total_dollars);
+    assert.equal(twice.approved_total_dollars, 50300);
+    assert.equal(twice.motion_count, once.motion_count);
+    assert.equal((await mcpTool("list_meetings", { board_id })).meetings.length, meetingsOnce);
+    dom.window.close();
+  });
+
   it("keeps the question field one line tall in the mobile layout", async () => {
     const res = await workerFetch("/demo");
     const html = await res.text();

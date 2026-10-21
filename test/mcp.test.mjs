@@ -633,6 +633,43 @@ describe("MCP streamable HTTP", () => {
     assert.equal(empty.data.meetings.length, 0);
   });
 
+  it("treats a repeated identical ingest as a no-op, so motions and roof spend are not double counted", async () => {
+    const { call } = await openSession(new MemoryStore());
+    const board_id = "repeat-ingest-board";
+    const started = await tool(call, "start_demo_board", { board_id });
+    assert.equal(started.isError, false, JSON.stringify(started.data));
+    const args = { board_id, transcript, meeting_date: "2026-10-15", roster: ROSTER };
+    const first = await tool(call, "ingest_meeting", args);
+    assert.equal(first.isError, false, JSON.stringify(first.data));
+    const once = await tool(call, "prepare_board_packet", { board_id, topic: "roof" });
+    assert.equal(once.data.approved_total_dollars, 50300);
+    assert.equal(once.data.motion_count, 2);
+    const meetingsOnce = await tool(call, "list_meetings", { board_id });
+
+    for (let i = 0; i < 2; i++) {
+      const again = await tool(call, "ingest_meeting", args);
+      assert.equal(again.isError, false, JSON.stringify(again.data));
+      assert.equal(again.data.duplicate, true);
+      assert.equal(again.data.meeting_id, first.data.meeting_id);
+      assert.match(again.result.content[0].text, /already ingested.*Nothing was added/i);
+    }
+    const meetingsAfter = await tool(call, "list_meetings", { board_id });
+    assert.equal(meetingsAfter.data.meetings.length, meetingsOnce.data.meetings.length);
+    assert.ok(!meetingsAfter.data.meetings.some((m) => m.meeting_id === `${first.data.meeting_id}-2`));
+    const after = await tool(call, "prepare_board_packet", { board_id, topic: "roof" });
+    assert.equal(after.data.approved_total_dollars, 50300, JSON.stringify(after.data.motions));
+    assert.equal(after.data.motion_count, 2);
+
+    // A genuinely different meeting on the same date is still stored separately.
+    const other = await tool(call, "ingest_meeting", {
+      ...args,
+      transcript: transcript + "\n[23:59:00] Mark Ellison: Note for the record, the pool gate sign was replaced.",
+    });
+    assert.equal(other.isError, false, JSON.stringify(other.data));
+    assert.notEqual(other.data.duplicate, true);
+    assert.equal(other.data.meeting_id, `${first.data.meeting_id}-2`);
+  });
+
   it("builds a roof packet across the August bid and an ingested October change order", async () => {
     const { call } = await openSession(new MemoryStore());
     const board_id = "packet-board";
