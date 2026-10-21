@@ -221,11 +221,12 @@ export async function sourceDigest(transcript, roster) {
 // A stored meeting with the same source digest is the same meeting. Meetings
 // stored before digests existed fall back to identical extracted content.
 /**
- * Duplicate identity is source matching, not semantic deduplication: a meeting is a
- * repeat only when the meeting_date matches and the SHA-256 of the transcript plus
- * roster is identical. Title and org are labels, not identity, so editing them alone
- * returns the original meeting unchanged. Any change to the transcript text, the
- * roster, or the date stores a separate meeting (id suffix -2, -3, ...).
+ * Duplicate identity is source matching, not semantic deduplication: matching date
+ * plus SHA-256 of the LF-normalized, outer-trimmed transcript and ordered roster JSON
+ * returns the existing meeting; title/org relabels do not update it. A different
+ * normalized source or date creates a separate record, with numeric suffixes only
+ * when necessary to avoid an ID collision. Legacy meetings without a digest fall back
+ * to the identical-extracted-content fingerprint above.
  */
 export function findDuplicateMeeting(ingested, meeting) {
   const want = meetingFingerprint(meeting);
