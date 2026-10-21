@@ -208,6 +208,7 @@ const PAGE = `<!DOCTYPE html>
     .people { grid-template-columns: 1fr; }
     .controls, .chips, .roster-row { flex-direction: column; align-items: stretch; }
     .controls button, .controls input, .chips button, #ingest-meeting, select, .roster-row button { width: 100%; }
+    .controls input[type="text"] { flex: 0 0 auto; }
     #answer { min-height: 0; }
     .latency { margin-left: 0; }
   }
@@ -582,16 +583,24 @@ const PAGE = `<!DOCTYPE html>
     return "";
   }
 
-  function rosterMatch(suggestion) {
+  // The picker uses the roster of the pending item's own meeting (sent by the
+  // server), then the active board's roster. It never falls back to the
+  // Juniper Hollow default roster when the board has its own.
+  function itemRoster(item) {
+    if (item && Array.isArray(item.roster) && item.roster.length) return item.roster;
+    return roster.length ? roster : DEFAULT_ROSTER;
+  }
+
+  function rosterMatch(suggestion, people) {
     var value = String(suggestion || "").trim().toLowerCase();
     if (!value || value === "unclear" || value === "unknown") return false;
-    var people = roster.length ? roster : DEFAULT_ROSTER;
+    var hits = 0;
     for (var i = 0; i < people.length; i++) {
       var parts = String(people[i].name || "").toLowerCase().split(" ").filter(Boolean);
       if (!parts.length) continue;
-      if (parts.join(" ") === value || parts[0] === value || parts[parts.length - 1] === value) return true;
+      if (parts.join(" ") === value || parts[0] === value || parts[parts.length - 1] === value) hits++;
     }
-    return false;
+    return hits === 1;
   }
 
   function personName(attr, fallback) {
@@ -731,8 +740,9 @@ const PAGE = `<!DOCTYPE html>
       motion.textContent = item.motion_text;
       li.appendChild(motion);
     }
+    var people = itemRoster(item);
     var suggestion = String(item.ai_suggestion || "").trim();
-    if (suggestion && rosterMatch(suggestion)) {
+    if (suggestion && rosterMatch(suggestion, people)) {
       var one = document.createElement("button");
       one.type = "button";
       one.setAttribute("data-testid", "confirm-suggestion");
@@ -755,7 +765,6 @@ const PAGE = `<!DOCTYPE html>
     placeholder.value = "";
     placeholder.textContent = "Choose a roster name";
     select.appendChild(placeholder);
-    var people = roster.length ? roster : DEFAULT_ROSTER;
     for (var p = 0; p < people.length; p++) {
       var opt = document.createElement("option");
       opt.value = people[p].name;
@@ -872,7 +881,7 @@ const PAGE = `<!DOCTYPE html>
       var contents = (result && result.contents) || [];
       var text = contents[0] && contents[0].text ? contents[0].text : "";
       var data = text ? JSON.parse(text) : {};
-      if (data.roster && data.roster.length) roster = data.roster;
+      roster = data.roster && data.roster.length ? data.roster : DEFAULT_ROSTER.slice();
     } catch (e) {
       if (!roster.length) roster = DEFAULT_ROSTER.slice();
     }

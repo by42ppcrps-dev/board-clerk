@@ -225,7 +225,17 @@ export function getDecision(meetings, meetingId, motionId, confirms = {}) {
   };
 }
 
-export function listPendingConfirmations(meetings, meetingId, confirms = {}) {
+function rosterChoices(meeting, fallbackRoster) {
+  const source = meeting.roster?.length ? meeting.roster : fallbackRoster || [];
+  return source
+    .map((person) => (typeof person === "string" ? { name: person } : person))
+    .filter((person) => person && String(person.name || "").trim())
+    .map((person) => (person.role ? { name: person.name, role: person.role } : { name: person.name }));
+}
+
+// Each pending item carries the roster of its own meeting, so a confirmation
+// picker offers exactly the names confirm_mover_seconder will accept for it.
+export function listPendingConfirmations(meetings, meetingId, confirms = {}, fallbackRoster = []) {
   const list = meetingId ? [findMeeting(meetings, meetingId)] : sortMeetings(meetings);
   const pending = [];
   for (const raw of list) {
@@ -246,6 +256,7 @@ export function listPendingConfirmations(meetings, meetingId, confirms = {}) {
           status: attr?.status || "NEEDS CONFIRMATION",
           reason: attr?.reason || "needs human confirm",
           ai_suggestion: attr?.ai_suggestion || mot[field],
+          roster: rosterChoices(meeting, fallbackRoster),
         });
       }
     }
