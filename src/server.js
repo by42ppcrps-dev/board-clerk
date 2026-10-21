@@ -220,6 +220,13 @@ export async function sourceDigest(transcript, roster) {
 
 // A stored meeting with the same source digest is the same meeting. Meetings
 // stored before digests existed fall back to identical extracted content.
+/**
+ * Duplicate identity is source matching, not semantic deduplication: a meeting is a
+ * repeat only when the meeting_date matches and the SHA-256 of the transcript plus
+ * roster is identical. Title and org are labels, not identity, so editing them alone
+ * returns the original meeting unchanged. Any change to the transcript text, the
+ * roster, or the date stores a separate meeting (id suffix -2, -3, ...).
+ */
 export function findDuplicateMeeting(ingested, meeting) {
   const want = meetingFingerprint(meeting);
   return (ingested || []).find((other) => {
@@ -604,7 +611,7 @@ export function createBoardServer({ env, store } = {}) {
         const duplicate = findDuplicateMeeting(loaded.ingested, meeting);
         if (duplicate) {
           const pendingDup = listPendingConfirmations([duplicate], duplicate.meeting_id, loaded.confirms || {});
-          const motionsDup = listMotions([duplicate], duplicate.meeting_id, {});
+          const motionsDup = listMotions([duplicate], duplicate.meeting_id, loaded.confirms || {});
           return toolResult(
             `${duplicate.meeting_id} is already ingested with this exact transcript. Nothing was added or changed.`,
             {

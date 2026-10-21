@@ -110,7 +110,16 @@ export function applyConfirms(meeting, confirms) {
     }
     return { ...mot, mover, seconder, attribution };
   });
-  return { ...meeting, motions };
+  const resolved = [];
+  for (const mot of meeting.motions || []) {
+    for (const field of ["mover", "seconder"]) {
+      if (confirms[confirmKey(meeting.meeting_id, mot.id, field)]) resolved.push(`Confirm ${field} for ${mot.id} (`);
+    }
+  }
+  const open_questions = Array.isArray(meeting.open_questions)
+    ? meeting.open_questions.filter((q) => !resolved.some((prefix) => String(q).startsWith(prefix)))
+    : meeting.open_questions;
+  return { ...meeting, motions, open_questions };
 }
 
 function countPending(meeting) {

@@ -301,6 +301,52 @@ describe("MCP streamable HTTP", () => {
     assert.equal(approved.isError, false, JSON.stringify(approved.data));
   });
 
+  it("keeps clerk confirmations on a repeated identical ingest and drops resolved open questions (F5/F7)", async () => {
+    const { call } = await openSession(new MemoryStore());
+    const board_id = "dana-repeat";
+    const args = {
+      board_id,
+      transcript: [
+        "[00:01:00] Dana: I move to approve the roof repair.",
+        "[00:01:05] Lee Park: Second.",
+        "[00:01:10] Chair: Moved by Dana, seconded by Park. The motion passes.",
+      ].join("\n"),
+      meeting_date: "2026-10-01",
+      roster: [{ name: "Dana Smith", role: "Director" }, { name: "Dana Jones", role: "Director" }, { name: "Lee Park", role: "Director" }],
+    };
+    const ingested = await tool(call, "ingest_meeting", args);
+    assert.equal(ingested.isError, false, JSON.stringify(ingested.data));
+    const meeting_id = ingested.data.meeting_id;
+    const draftBefore = await tool(call, "draft_minutes", { board_id, meeting_id });
+    assert.match(draftBefore.data.markdown, /## Open questions[\s\S]*Confirm mover for M1/);
+
+    const chosen = await tool(call, "confirm_mover_seconder", {
+      board_id, meeting_id, motion_id: "M1", field: "mover", value: "Dana Jones", confirmed_by: "Demo Judge",
+    });
+    assert.equal(chosen.isError, false, JSON.stringify(chosen.data));
+
+    const checkRepeat = async (label) => {
+      const again = await tool(call, "ingest_meeting", args);
+      assert.equal(again.isError, false, JSON.stringify(again.data));
+      assert.equal(again.data.duplicate, true, label);
+      assert.equal(again.data.count, 0, label);
+      const m1 = again.data.motions.find((motion) => motion.motion_id === "M1");
+      assert.equal(m1.mover, "Dana Jones", label);
+      assert.equal(m1.attribution.mover.status, "CONFIRMED BY CLERK", label);
+      assert.doesNotMatch(JSON.stringify(again.data.motions), /needs confirm|NEEDS CONFIRMATION/, label);
+    };
+    await checkRepeat("after confirmation");
+
+    const requested = await tool(call, "request_minutes_approval", { board_id, meeting_id, approver_name: "Demo Judge" });
+    const approved = await tool(call, "approve_minutes", {
+      board_id, meeting_id, approval_id: requested.data.id, approver_name: "Demo Judge",
+    });
+    assert.equal(approved.isError, false, JSON.stringify(approved.data));
+    assert.match(approved.data.markdown, /\*\*Mover:\*\* Dana Jones/);
+    assert.doesNotMatch(approved.data.markdown, /Open questions|Confirm mover for M1/);
+    await checkRepeat("after approval");
+  });
+
   it("shares confirmations and ingested meetings across handler instances", async () => {
     const store = new MemoryStore();
     const first = await openSession(store);
@@ -659,6 +705,12 @@ describe("MCP streamable HTTP", () => {
     const after = await tool(call, "prepare_board_packet", { board_id, topic: "roof" });
     assert.equal(after.data.approved_total_dollars, 50300, JSON.stringify(after.data.motions));
     assert.equal(after.data.motion_count, 2);
+
+    // Identity is the transcript+roster digest on the same date; title/org are labels (documented F6 semantics).
+    const relabeled = await tool(call, "ingest_meeting", { ...args, title: "Renamed meeting", org: "Other Org" });
+    assert.equal(relabeled.isError, false, JSON.stringify(relabeled.data));
+    assert.equal(relabeled.data.duplicate, true);
+    assert.equal(relabeled.data.meeting_id, first.data.meeting_id);
 
     // A genuinely different meeting on the same date is still stored separately.
     const other = await tool(call, "ingest_meeting", {
