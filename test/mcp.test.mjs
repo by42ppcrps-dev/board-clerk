@@ -255,6 +255,52 @@ describe("MCP streamable HTTP", () => {
     assert.equal(repeated.data.approver_name, "Demo Judge");
   });
 
+  it("holds an ambiguous speaker for the clerk and refuses approval until a single roster member is chosen", async () => {
+    const { call } = await openSession(new MemoryStore());
+    const board_id = "dana-ambiguity";
+    const ingested = await tool(call, "ingest_meeting", {
+      board_id,
+      transcript: [
+        "[00:01:00] Dana: I move to approve the roof repair.",
+        "[00:01:05] Lee Park: Second.",
+        "[00:01:10] Chair: Moved by Dana, seconded by Park. The motion passes.",
+      ].join("\n"),
+      meeting_date: "2026-10-01",
+      roster: [{ name: "Dana Smith", role: "Director" }, { name: "Dana Jones", role: "Director" }, { name: "Lee Park", role: "Director" }],
+    });
+    assert.equal(ingested.isError, false, JSON.stringify(ingested.data));
+    const meeting_id = ingested.data.meeting_id;
+    const pending = await tool(call, "list_pending_confirmations", { board_id, meeting_id });
+    assert.equal(pending.data.count, 1, JSON.stringify(pending.data.pending));
+    assert.equal(pending.data.pending[0].field, "mover");
+
+    const requested = await tool(call, "request_minutes_approval", { board_id, meeting_id, approver_name: "Demo Judge" });
+    const refused = await tool(call, "approve_minutes", {
+      board_id,
+      meeting_id,
+      approval_id: requested.data.id,
+      approver_name: "Demo Judge",
+    });
+    assert.equal(refused.isError, true);
+
+    const vague = await tool(call, "confirm_mover_seconder", {
+      board_id, meeting_id, motion_id: "M1", field: "mover", value: "Dana", confirmed_by: "Demo Judge",
+    });
+    assert.equal(vague.isError, true);
+    const chosen = await tool(call, "confirm_mover_seconder", {
+      board_id, meeting_id, motion_id: "M1", field: "mover", value: "Dana Jones", confirmed_by: "Demo Judge",
+    });
+    assert.equal(chosen.isError, false, JSON.stringify(chosen.data));
+    assert.equal(chosen.data.confirmation.value, "Dana Jones");
+    const approved = await tool(call, "approve_minutes", {
+      board_id,
+      meeting_id,
+      approval_id: requested.data.id,
+      approver_name: "Demo Judge",
+    });
+    assert.equal(approved.isError, false, JSON.stringify(approved.data));
+  });
+
   it("shares confirmations and ingested meetings across handler instances", async () => {
     const store = new MemoryStore();
     const first = await openSession(store);

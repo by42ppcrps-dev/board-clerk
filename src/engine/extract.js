@@ -66,23 +66,47 @@ function motionTextFrom(utterance) {
   return text.charAt(0).toUpperCase() + text.slice(1) + ".";
 }
 
-function matchPerson(speaker, people) {
+/**
+ * Match a speaker label or stated name to the roster. Returns the person, null,
+ * or { ambiguous: [names] } when more than one roster member fits at the best
+ * matching tier. Roster order never decides between candidates.
+ */
+function matchPersonOrAmbiguous(speaker, people) {
   if (!speaker) return null;
   const s = String(speaker).trim().toLowerCase().replace(/\s+/g, " ");
-  for (const p of people) {
-    if (s === p.name.toLowerCase() || s === p.first.toLowerCase() || s === p.last.toLowerCase()) return p;
-  }
-  for (const p of people) {
-    if (s.endsWith(" " + p.name.toLowerCase()) || s.endsWith(" " + p.last.toLowerCase())) return p;
+  if (!s) return null;
+  const tiers = [
+    (p) => s === p.name.toLowerCase(),
+    (p) => s === p.first.toLowerCase() || s === p.last.toLowerCase(),
+    (p) => s.endsWith(" " + p.name.toLowerCase()) || s.endsWith(" " + p.last.toLowerCase()),
+  ];
+  for (const test of tiers) {
+    const hits = people.filter(test);
+    if (hits.length === 1) return hits[0];
+    if (hits.length > 1) {
+      return { ambiguous: [...new Set(hits.map((p) => p.name))].sort((a, b) => a.localeCompare(b)), label: String(speaker).trim() };
+    }
   }
   return null;
+}
+
+function isAmbiguous(match) {
+  return Boolean(match && Array.isArray(match.ambiguous));
+}
+
+/** Person or null. An ambiguous match is treated as unknown, never as the first candidate. */
+function matchPerson(speaker, people) {
+  const match = matchPersonOrAmbiguous(speaker, people);
+  return isAmbiguous(match) ? null : match;
 }
 
 function grabName(text, label) {
   const re = new RegExp(`\\b${label}\\s+([A-Za-z][A-Za-z.'-]*)(?:\\s+([A-Za-z][A-Za-z.'-]*))?`, "i");
   const m = String(text || "").match(re);
   if (!m) return null;
-  return m[2] ? `${m[1]} ${m[2]}` : m[1];
+  // "seconded by Park. The motion passes" names Park, not "Park. The".
+  const name = (m[2] ? `${m[1]} ${m[2]}` : m[1]).split(/[.,;]/)[0].trim();
+  return name || null;
 }
 
 function splitSpeaker(text) {
@@ -279,14 +303,21 @@ function buildMotion(segment, people, index, attendance, allLines, startIndex) {
   const first = segment[0];
   const { speaker, utterance } = splitSpeaker(first.text);
   const joined = segment.map((line) => line.text).join(" ");
-  let moverPerson = matchPerson(speaker, people);
-  let seconderPerson = null;
-  const statedMover = matchPerson(grabName(joined, "moved by"), people);
-  const statedSeconder = matchPerson(grabName(joined, "seconded by"), people);
-  if (statedMover) moverPerson = statedMover;
+  // A stated name ("moved by Raman") beats the speaker label. Ambiguous matches
+  // stay ambiguous: the field becomes UNCLEAR and the candidates go to the clerk.
+  let moverMatch = matchPersonOrAmbiguous(speaker, people);
+  let seconderMatch = null;
+  const statedMover = matchPersonOrAmbiguous(grabName(joined, "moved by"), people);
+  const statedSeconder = matchPersonOrAmbiguous(grabName(joined, "seconded by"), people);
+  if (statedMover) moverMatch = statedMover;
   const secondLine = segment.slice(1).find((line) => isSecondLine(splitSpeaker(line.text).utterance));
-  if (secondLine) seconderPerson = matchPerson(splitSpeaker(secondLine.text).speaker, people);
-  if (statedSeconder) seconderPerson = statedSeconder;
+  if (secondLine) seconderMatch = matchPersonOrAmbiguous(splitSpeaker(secondLine.text).speaker, people);
+  if (statedSeconder) seconderMatch = statedSeconder;
+  const ambiguity = {};
+  if (isAmbiguous(moverMatch)) ambiguity.mover = moverMatch;
+  if (isAmbiguous(seconderMatch)) ambiguity.seconder = seconderMatch;
+  const moverPerson = isAmbiguous(moverMatch) ? null : moverMatch;
+  const seconderPerson = isAmbiguous(seconderMatch) ? null : seconderMatch;
 
   const mover = moverPerson ? moverPerson.last : "UNCLEAR";
   const seconder = seconderPerson ? seconderPerson.last : "UNCLEAR";
@@ -306,10 +337,13 @@ function buildMotion(segment, people, index, attendance, allLines, startIndex) {
   const nays = [];
   const abstain = [];
   let rollCall = false;
+  let ambiguousVoter = false;
   for (const line of segment.slice(1)) {
     const parts = splitSpeaker(line.text);
     if (!VOTE_LINE.test(parts.utterance.trim())) continue;
-    const voter = matchPerson(parts.speaker, people);
+    const voterMatch = matchPersonOrAmbiguous(parts.speaker, people);
+    if (isAmbiguous(voterMatch)) ambiguousVoter = true;
+    const voter = isAmbiguous(voterMatch) ? null : voterMatch;
     if (!voter) continue;
     rollCall = true;
     const word = parts.utterance.trim().toLowerCase().replace(/[.!]/g, "");
@@ -348,6 +382,10 @@ function buildMotion(segment, people, index, attendance, allLines, startIndex) {
     uncertain.push("outcome");
     confidence = "low";
   }
+  if (ambiguousVoter && !uncertain.includes("tally")) {
+    uncertain.push("tally");
+    if (confidence === "high") confidence = "medium";
+  }
   if (!rollCall && outcome === "failed" && ayes.length === 0 && nays.length === 0) {
     uncertain.push("tally");
     if (confidence === "high") confidence = "medium";
@@ -358,7 +396,7 @@ function buildMotion(segment, people, index, attendance, allLines, startIndex) {
   if (outcomeLine) evidenceBits.push(splitSpeaker(outcomeLine.text).utterance);
   const vote_timestamp = (outcomeLine || segment[segment.length - 1]).timestamp;
 
-  return {
+  const core = {
     agenda_item: agendaFor(allLines, startIndex, motion_text, index),
     motion_text,
     mover,
@@ -375,6 +413,7 @@ function buildMotion(segment, people, index, attendance, allLines, startIndex) {
     uncertain_fields: uncertain,
     evidence_quote: evidenceBits.join(" ").slice(0, 500),
   };
+  return { core, ambiguity };
 }
 
 /**
@@ -410,9 +449,10 @@ export function extractMeeting({ transcript, roster, meeting_id, meeting_date, o
     i = j;
   }
 
-  const cores = segments.map((segment, index) =>
+  const built = segments.map((segment, index) =>
     buildMotion(segment.lines, people, index, attendance, lines, segment.start),
   );
+  const cores = built.map((b) => b.core);
   const checked = validateMotions({ motions: cores });
   if (!checked.ok) {
     throw new Error(`extractor produced invalid motions: ${JSON.stringify(checked.errors)}`);
@@ -420,6 +460,14 @@ export function extractMeeting({ transcript, roster, meeting_id, meeting_date, o
 
   const motions = checked.motions.map((core, index) => {
     const attribution = attribute(core, transcript, roster || []);
+    for (const [field, amb] of Object.entries(built[index].ambiguity)) {
+      attribution[field] = {
+        status: "NEEDS CONFIRMATION",
+        reason: `"${amb.label}" matches more than one roster member (${amb.ambiguous.join(", ")})`,
+        ai_suggestion: amb.label,
+        candidates: amb.ambiguous,
+      };
+    }
     return {
       ...core,
       id: `M${index + 1}`,
@@ -433,9 +481,10 @@ export function extractMeeting({ transcript, roster, meeting_id, meeting_date, o
     for (const field of ["mover", "seconder"]) {
       const attr = mot.attribution[field];
       if (attr?.status === "NEEDS CONFIRMATION") {
-        open_questions.push(
-          `Confirm ${field} for ${mot.id} (${mot.agenda_item}). AI suggestion: ${attr.ai_suggestion}.`,
-        );
+        const tail = attr.candidates?.length
+          ? `"${attr.ai_suggestion}" matches more than one roster member: ${attr.candidates.join(", ")}.`
+          : `AI suggestion: ${attr.ai_suggestion}.`;
+        open_questions.push(`Confirm ${field} for ${mot.id} (${mot.agenda_item}). ${tail}`);
       }
     }
   }

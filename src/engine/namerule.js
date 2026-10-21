@@ -1,7 +1,13 @@
 /**
  * Spoken-name attribution. Mover/seconder is SPOKEN only when that person's
- * surname, first name, or alias appears in transcript lines within -45s..+30s
- * of the motion timestamp. Otherwise NEEDS CONFIRMATION (AI suggestion kept).
+ * surname, first name, or full name appears in what someone said (the transcript
+ * text after the speaker label) within -45s..+30s of the motion timestamp.
+ * A speaker label alone never counts: labels come from diarization or a
+ * transcriber, not from words said in the meeting.
+ * An alias only counts when it belongs to exactly one roster member. If a name
+ * matches more than one roster member (two people named Dana), the field stays
+ * NEEDS CONFIRMATION with the candidates listed, sorted by name, so roster order
+ * can never pick the person. Otherwise NEEDS CONFIRMATION (AI suggestion kept).
  * Aliases come from the roster (first, last, full). Port of minutes-test namerule.py.
  */
 import { tsec } from "./crosscheck.js";
@@ -49,6 +55,23 @@ function wordIn(text, alias) {
   return new RegExp(`\\b${escapeRe(alias)}\\b`, "i").test(text);
 }
 
+/** Split "Speaker Name: words" into the label and what was said. */
+export function splitSpeakerLabel(text) {
+  const value = String(text ?? "");
+  const m = value.match(/^([^:]{1,80}):\s*(.*)$/);
+  if (!m) return { speaker: "", utterance: value };
+  return { speaker: m[1].trim(), utterance: m[2] };
+}
+
+/** alias -> number of roster members who share it. */
+function aliasCounts(people) {
+  const counts = new Map();
+  for (const person of people) {
+    for (const alias of person.aliases) counts.set(alias, (counts.get(alias) || 0) + 1);
+  }
+  return counts;
+}
+
 function normalizeLines(transcriptLines) {
   if (typeof transcriptLines === "string") return parseTranscriptLines(transcriptLines);
   if (!Array.isArray(transcriptLines)) return [];
@@ -78,23 +101,30 @@ function normalizeLines(transcriptLines) {
   return out;
 }
 
-function identify(raw, people) {
+/**
+ * Roster members a raw name could refer to. Exact full-name matches win.
+ * Returns every candidate so callers can refuse to choose between them.
+ */
+export function rosterCandidates(raw, people) {
   const value = String(raw || "").trim();
-  if (!value || value.toLowerCase() === "unclear") return null;
-  const lower = value.toLowerCase();
-  const parts = lower.split(/\s+/).filter(Boolean);
+  if (!value || value.toLowerCase() === "unclear") return [];
+  const lower = value.toLowerCase().replace(/\s+/g, " ");
+  const exact = people.filter((p) => p.name.toLowerCase() === lower);
+  if (exact.length) return exact;
+  const parts = lower.split(" ").filter(Boolean);
   const last = parts[parts.length - 1] || "";
-  return (
-    people.find(
-      (p) =>
-        p.name.toLowerCase() === lower ||
-        p.first.toLowerCase() === lower ||
-        p.last.toLowerCase() === lower ||
-        p.last.toLowerCase() === last ||
-        p.aliases.has(lower) ||
-        p.aliases.has(last),
-    ) || null
+  return people.filter(
+    (p) =>
+      p.first.toLowerCase() === lower ||
+      p.last.toLowerCase() === lower ||
+      p.last.toLowerCase() === last ||
+      p.aliases.has(lower) ||
+      p.aliases.has(last),
   );
+}
+
+function sortedNames(people) {
+  return [...new Set(people.map((p) => p.name))].sort((a, b) => a.localeCompare(b));
 }
 
 /**
@@ -103,10 +133,13 @@ function identify(raw, people) {
 export function attribute(motion, transcriptLines, roster) {
   const lines = normalizeLines(transcriptLines);
   const people = rosterPeople(roster);
+  const shared = aliasCounts(people);
   const t = tsec(motion?.motion_timestamp ?? "");
   const windowLines =
     t == null ? [] : lines.filter((line) => line.t >= t - 45 && line.t <= t + 30);
-  const win = windowLines.map((line) => line.text).join(" ");
+  const spokenLines = windowLines.map((line) => ({ ...line, said: splitSpeakerLabel(line.text).utterance }));
+  const win = spokenLines.map((line) => line.said).join(" ");
+  const notSpoken = "name not spoken within -45s..+30s of the motion timestamp (a speaker label alone does not count)";
 
   function fieldAttr(field) {
     const raw = String(motion?.[field] ?? "").trim();
@@ -114,16 +147,27 @@ export function attribute(motion, transcriptLines, roster) {
     if (!raw || raw.toLowerCase() === "unclear") {
       return {
         status: "NEEDS CONFIRMATION",
-        reason: "name not spoken within -45s..+30s of the motion timestamp",
+        reason: notSpoken,
         ai_suggestion: suggestion,
       };
     }
-    const person = identify(raw, people);
-    const aliases = person ? [...person.aliases] : [raw.toLowerCase().split(/\s+/).pop()].filter(Boolean);
+    const candidates = rosterCandidates(raw, people);
+    if (candidates.length > 1) {
+      const names = sortedNames(candidates);
+      return {
+        status: "NEEDS CONFIRMATION",
+        reason: `"${raw}" matches more than one roster member (${names.join(", ")})`,
+        ai_suggestion: raw,
+        candidates: names,
+      };
+    }
+    const person = candidates[0] || null;
+    const aliases = person
+      ? [...person.aliases].filter((alias) => (shared.get(alias) || 0) === 1)
+      : [raw.toLowerCase().split(/\s+/).pop()].filter((alias) => alias && !shared.has(alias));
     const hitAlias = aliases.find((alias) => wordIn(win, alias));
     if (hitAlias) {
-      const evidenceLine =
-        windowLines.find((line) => wordIn(line.text, hitAlias)) || windowLines[0] || null;
+      const evidenceLine = spokenLines.find((line) => wordIn(line.said, hitAlias)) || null;
       const spoken = {
         status: "SPOKEN",
         value: person ? person.name : raw,
@@ -135,7 +179,7 @@ export function attribute(motion, transcriptLines, roster) {
     }
     return {
       status: "NEEDS CONFIRMATION",
-      reason: "name not spoken within -45s..+30s of the motion timestamp",
+      reason: notSpoken,
       ai_suggestion: raw,
     };
   }

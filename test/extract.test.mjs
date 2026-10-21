@@ -179,3 +179,79 @@ describe("extractMeeting agenda, header, and tallies", () => {
     assert.equal(meeting.motions[0].ayes.includes("Becker"), false);
   });
 });
+
+describe("extractMeeting ambiguous and label-only names", () => {
+  const danaTranscript = [
+    "[00:01:00] Dana: I move to approve the roof repair.",
+    "[00:01:05] Lee Park: Second.",
+    "[00:01:10] Chair: The motion passes.",
+  ].join("\n");
+  const danaRoster = [{ name: "Dana Smith" }, { name: "Dana Jones" }, { name: "Lee Park" }];
+  const run = (transcript, roster) =>
+    extractMeeting({ transcript, roster, meeting_id: "amb", meeting_date: "2026-10-01" });
+
+  it("leaves an ambiguous mover as an open question instead of picking the first roster match", () => {
+    const meeting = run(danaTranscript, danaRoster);
+    const mover = meeting.motions[0].attribution.mover;
+    assert.equal(meeting.motions[0].mover, "UNCLEAR");
+    assert.equal(mover.status, "NEEDS CONFIRMATION");
+    assert.deepEqual(mover.candidates, ["Dana Jones", "Dana Smith"]);
+    assert.ok(meeting.open_questions.some((q) => /mover for M1/.test(q) && /Dana Jones, Dana Smith/.test(q)));
+    assert.notEqual(mover.value, "Dana Smith");
+  });
+
+  it("gives the same motions and open questions when the roster order is reversed", () => {
+    const a = run(danaTranscript, danaRoster);
+    const b = run(danaTranscript, [...danaRoster].reverse());
+    const people = (m) => m.motions.map((mot) => ({ mover: mot.mover, seconder: mot.seconder, attribution: mot.attribution }));
+    assert.deepEqual(people(b), people(a));
+    assert.deepEqual(b.open_questions, a.open_questions);
+  });
+
+  it("holds an ambiguous stated name too", () => {
+    const meeting = run(
+      [
+        "[00:01:00] Chair: Motion to approve the roof repair.",
+        "[00:01:10] Chair: Moved by Dana, seconded by Park. The motion passes.",
+      ].join("\n"),
+      danaRoster,
+    );
+    assert.equal(meeting.motions[0].attribution.mover.status, "NEEDS CONFIRMATION");
+    assert.deepEqual(meeting.motions[0].attribution.mover.candidates, ["Dana Jones", "Dana Smith"]);
+    assert.equal(meeting.motions[0].attribution.seconder.status, "SPOKEN");
+  });
+
+  it("flags the tally when a roll-call voter label is ambiguous", () => {
+    const meeting = run(
+      [
+        "[00:01:00] Lee Park: I move to approve the roof repair.",
+        "[00:01:05] Dana Smith: Second.",
+        "[00:01:10] Dana: Aye.",
+        "[00:01:12] Lee Park: Aye.",
+        "[00:01:20] Chair: The motion passes.",
+      ].join("\n"),
+      danaRoster,
+    );
+    assert.ok(meeting.motions[0].uncertain_fields.includes("tally"));
+    assert.deepEqual(meeting.motions[0].ayes, ["Park"]);
+  });
+
+  it("does not mark names SPOKEN from speaker labels alone", () => {
+    const roster = [{ name: "Maya Patel" }, { name: "Leo Chen" }];
+    const labelsOnly = [
+      "[00:01:00] Maya Patel: I move to approve the roof repair.",
+      "[00:01:05] Leo Chen: Second.",
+      "[00:01:10] Chair: The motion passes.",
+    ].join("\n");
+    const meeting = run(labelsOnly, roster);
+    assert.equal(meeting.motions[0].attribution.mover.status, "NEEDS CONFIRMATION");
+    assert.equal(meeting.motions[0].attribution.seconder.status, "NEEDS CONFIRMATION");
+    assert.equal(meeting.open_questions.length, 2);
+
+    const restated = run(labelsOnly + "\n[00:01:12] Chair: Moved by Patel, seconded by Chen.", roster);
+    assert.equal(restated.motions[0].attribution.mover.status, "SPOKEN");
+    assert.equal(restated.motions[0].attribution.seconder.status, "SPOKEN");
+    assert.equal(restated.open_questions.length, 0);
+  });
+});
+
