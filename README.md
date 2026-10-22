@@ -1,6 +1,8 @@
 # Board Clerk MCP
 
-Streamable-HTTP MCP server for the MinutesDesk board-clerk loop: ingest a clean transcript, list what the board decided, confirm a mover or seconder, and approve minutes. It keeps that state per board across sessions. Protocol `2025-11-25`. Server name `board-clerk`, version `0.4.1`.
+Board Clerk is an MCP server that lets an Alexa+ style assistant act as the clerk for a volunteer board such as an HOA or PTA. It pulls motions, movers, seconders, and votes from a meeting transcript, holds any mover or seconder name the transcript does not support for the clerk to confirm, and refuses to approve minutes while any of those names is still unconfirmed.
+
+It is a Streamable-HTTP MCP server and keeps that state per board across sessions. Protocol `2025-11-25`. Server name `board-clerk`, version `0.4.1`.
 
 Judge walkthrough: [docs/JUDGES.md](docs/JUDGES.md). Assistant instructions: [skills/board-clerk/SKILL.md](skills/board-clerk/SKILL.md).
 
