@@ -11,7 +11,7 @@ Live host `https://lumegrid-board-clerk-v02.lumegridai.workers.dev/` serves 16 t
 Local:
 
 ```bash
-npm i
+npm ci
 npm test
 npx wrangler dev
 ```
