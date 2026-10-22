@@ -1,6 +1,6 @@
 # Board Clerk MCP
 
-Streamable-HTTP MCP server for the MinutesDesk board-clerk loop: ingest a clean transcript, list what the board decided, confirm a mover or seconder, and approve minutes. It keeps that state per board across sessions. Protocol `2025-11-25`. Server name `board-clerk`, version `0.4.0`.
+Streamable-HTTP MCP server for the MinutesDesk board-clerk loop: ingest a clean transcript, list what the board decided, confirm a mover or seconder, and approve minutes. It keeps that state per board across sessions. Protocol `2025-11-25`. Server name `board-clerk`, version `0.4.1`.
 
 Judge walkthrough: [docs/JUDGES.md](docs/JUDGES.md). Assistant instructions: [skills/board-clerk/SKILL.md](skills/board-clerk/SKILL.md).
 
@@ -19,7 +19,7 @@ The `/demo` page is a simulated Alexa+ experience, not an Alexa device. It calls
 
 On first load the page calls `start_demo_board` with a random `judge-` id stored in `localStorage` (`boardClerkDemoBoardId`), so a judge is not writing on the shared demo board. `?board=<id>` reuses a board. `?reset=1` starts a fresh isolated board. Judge boards are isolated by `board_id`.
 
-Live demo: `https://lumegrid-board-clerk-v02.lumegridai.workers.dev` (MCP at `/mcp`, demo at `/demo`). This repo's server version is `0.4.0`. `npx wrangler dev` serves this checkout locally and does not deploy.
+Live demo: `https://lumegrid-board-clerk-v02.lumegridai.workers.dev` (MCP at `/mcp`, demo at `/demo`). This repo's server version is `0.4.1`; `/health` on the live host reports the version it is running. `npx wrangler dev` serves this checkout locally and does not deploy.
 
 `wrangler.toml` names the worker `lumegrid-board-clerk-v02` and does not set `account_id`. Log in with Wrangler on the account that should own that worker before any deploy.
 

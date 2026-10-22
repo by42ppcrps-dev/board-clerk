@@ -250,7 +250,7 @@ export const DECISION_CARD_HTML = `<!DOCTYPE html>
 
   sendRequest("ui/initialize", {
     protocolVersion: "2026-01-26",
-    appInfo: { name: "Board Clerk decision card", version: "0.4.0" },
+    appInfo: { name: "Board Clerk decision card", version: "0.4.1" },
     appCapabilities: { availableDisplayModes: ["inline"] }
   }).then(function (result) {
     applyHost(result && result.hostContext);

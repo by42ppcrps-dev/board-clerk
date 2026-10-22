@@ -1,6 +1,6 @@
 # Architecture
 
-`board-clerk` 0.4.0 is a Streamable HTTP MCP server. The engine is rule-based. It does not call a model. Per-board state is a SQLite Durable Object. Tests without a binding use `MemoryStore`, which speaks the same `POST /op` JSON.
+`board-clerk` 0.4.1 is a Streamable HTTP MCP server. The engine is rule-based. It does not call a model. Per-board state is a SQLite Durable Object. Tests without a binding use `MemoryStore`, which speaks the same `POST /op` JSON.
 
 The tool handler calls the engine for rules and the Durable Object for stored meetings, confirmations, approvals, and the audit log. The engine does not open the Durable Object itself.
 

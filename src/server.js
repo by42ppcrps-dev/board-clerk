@@ -1,5 +1,5 @@
 /**
- * MCP server "board-clerk" 0.4.0. Tools are state-aware (MemoryStore or BoardState DO).
+ * MCP server "board-clerk" 0.4.1. Tools are state-aware (MemoryStore or BoardState DO).
  * No network calls. Approval requests are recorded only; email is never sent.
  */
 import { McpServer, ResourceTemplate, createMcpHandler } from "@modelcontextprotocol/server";
@@ -25,7 +25,7 @@ import { DEFAULT_BOARD_ID, LIMITS, MemoryStore, assertBoardId } from "./state.js
 import { DECISION_CARD_HTML, DECISION_CARD_MIME, DECISION_CARD_URI } from "./ui/decision-card.js";
 
 export const SERVER_NAME = "board-clerk";
-export const SERVER_VERSION = "0.4.0";
+export const SERVER_VERSION = "0.4.1";
 export const PROTOCOL_VERSION = "2025-11-25";
 
 export const TOOL_NAMES = [

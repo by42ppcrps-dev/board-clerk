@@ -1,10 +1,10 @@
 # Judge test path
 
-Server name `board-clerk`, version `0.4.0` (live host and this repo). Protocol `2025-11-25`. All meetings and names are synthetic. The page does not speak, and it is not an Alexa device. Assistant instructions for the clerk loop are [skills/board-clerk/SKILL.md](../skills/board-clerk/SKILL.md).
+Server name `board-clerk`, version `0.4.1` in this repo; `/health` on the live host reports its version. Protocol `2025-11-25`. All meetings and names are synthetic. The page does not speak, and it is not an Alexa device. Assistant instructions for the clerk loop are [skills/board-clerk/SKILL.md](../skills/board-clerk/SKILL.md).
 
 Boards are isolated by `board_id`. A `board_id` is 3 to 40 characters: lowercase letters, digits, and hyphens. Pick your own. `juniper-hollow-demo` is read-only: every write tool returns an error and tells you to call `start_demo_board` with your own id. Reads of that id still return the two seeded meetings and set `demo_board: true`. `start_demo_board` copies those fixtures onto the id you pass and refuses `juniper-hollow-demo`.
 
-Live host `https://lumegrid-board-clerk-v02.lumegridai.workers.dev/` serves server `0.4.0`: 16 tools including `prepare_board_packet`. `juniper-hollow-demo` is read-only; call `start_demo_board` with your own board_id before any write. Check it with `scripts/smoke-remote.mjs` (it expects health and `initialize` to report `0.4.0`) and Inspector CLI `tools/list`.
+Live host `https://lumegrid-board-clerk-v02.lumegridai.workers.dev/` serves 16 tools including `prepare_board_packet`; its `/health` reports the deployed version. `juniper-hollow-demo` is read-only; call `start_demo_board` with your own board_id before any write. Check it with `scripts/smoke-remote.mjs` (it expects health and `initialize` to report this checkout's `SERVER_VERSION`, `0.4.1`, so it fails against a host that has not been redeployed) and Inspector CLI `tools/list`.
 
 ## About two minutes on the simulated page
 

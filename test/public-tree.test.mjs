@@ -35,7 +35,7 @@ test("server version is consistent across package, docs, and health", () => {
   const arch = readFileSync(join(root, "docs/ARCHITECTURE.md"), "utf8");
   const judges = readFileSync(join(root, "docs/JUDGES.md"), "utf8");
   const license = readFileSync(join(root, "LICENSE"), "utf8");
-  assert.equal(SERVER_VERSION, "0.4.0");
+  assert.equal(SERVER_VERSION, "0.4.1");
   assert.equal(pkg.version, SERVER_VERSION);
   assert.equal(pkg.license, "MIT");
   assert.match(license, /MIT License/);

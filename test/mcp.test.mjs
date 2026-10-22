@@ -116,7 +116,7 @@ describe("MCP streamable HTTP", () => {
     assert.equal(init.protocolVersion, "2025-11-25");
     assert.equal(init.serverInfo.name, "board-clerk");
     assert.equal(init.serverInfo.version, SERVER_VERSION);
-    assert.equal(init.serverInfo.version, "0.4.0");
+    assert.equal(init.serverInfo.version, "0.4.1");
 
     const listed = await call("tools/list", {});
     const names = listed.tools.map((tool) => tool.name).sort();
@@ -764,7 +764,7 @@ describe("worker HTTP guards", () => {
     assert.equal(body.protocol, "2025-11-25");
     assert.equal(body.demo, "/demo");
     assert.equal(body.version, SERVER_VERSION);
-    assert.equal(body.version, "0.4.0");
+    assert.equal(body.version, "0.4.1");
     assert.ok(body.tools.includes("start_demo_board"));
     assert.ok(body.tools.includes("prepare_board_packet"));
 
@@ -784,7 +784,7 @@ describe("worker HTTP guards", () => {
     assert.equal(html.includes("speechSynthesis"), false);
     assert.equal(html.includes("cdn."), false);
     assert.equal(html.includes("fonts.googleapis"), false);
-    assert.match(html, /0\.4\.0/);
+    assert.match(html, /0\.4\.1/);
     assert.match(html, /aria-live="polite"/);
     assert.match(html, /:focus-visible/);
     assert.match(html, /min-width:\s*1200px/);
