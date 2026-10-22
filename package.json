@@ -2,7 +2,7 @@
   "name": "board-clerk-mcp",
   "version": "0.4.0",
   "private": true,
-  "description": "MinutesDesk Board Clerk — Streamable-HTTP MCP server (Cloudflare Workers). Synthetic fixtures.",
+  "description": "Board Clerk: Streamable-HTTP MCP server (Cloudflare Workers). Synthetic fixtures.",
   "license": "MIT",
   "engines": {
     "node": ">=22.0.0"

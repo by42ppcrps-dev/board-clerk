@@ -6,7 +6,7 @@ const PAGE = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Board Clerk — simulated Alexa+</title>
+<title>Board Clerk | simulated Alexa+</title>
 <style>
   :root { color-scheme: light; }
   * { box-sizing: border-box; }

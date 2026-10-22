@@ -1,6 +1,6 @@
 /**
  * MCP server "board-clerk" 0.4.0. Tools are state-aware (MemoryStore or BoardState DO).
- * No network calls. Approval requests are recorded only — email is never sent.
+ * No network calls. Approval requests are recorded only; email is never sent.
  */
 import { McpServer, ResourceTemplate, createMcpHandler } from "@modelcontextprotocol/server";
 import { z } from "zod";

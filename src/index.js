@@ -1,5 +1,5 @@
 /**
- * Board Clerk — Streamable HTTP MCP server on Cloudflare Workers.
+ * Board Clerk: Streamable HTTP MCP server on Cloudflare Workers.
  * Synthetic fixtures only. No model or email calls.
  * Origin allowlist and the 256 KB body cap are the DNS-rebinding / DoS controls for /mcp.
  */
