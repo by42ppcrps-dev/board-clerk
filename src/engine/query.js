@@ -138,7 +138,7 @@ export function displayName(m, field) {
     return attr.value || m[field];
   }
   if (attr?.status === "NEEDS CONFIRMATION") {
-    return `(needs confirm; AI guessed ${attr.ai_suggestion || m[field]})`;
+    return `(needs confirm; suggested ${attr.ai_suggestion || m[field]})`;
   }
   return m[field];
 }
@@ -218,7 +218,7 @@ export function getDecision(meetings, meetingId, motionId, confirms = {}) {
   const mot = getMotion(meetings, meetingId, motionId, confirms);
   const meeting = findMeeting(meetings, mot.meeting_id);
   return {
-    decision: `${mot.motion_text} — ${mot.outcome} (${mot.tally})`,
+    decision: `${mot.motion_text}: ${mot.outcome} (${mot.tally})`,
     meeting_id: mot.meeting_id,
     meeting_date: meeting.meeting_date,
     motion_id: mot.motion_id,

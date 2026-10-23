@@ -187,12 +187,12 @@ export default {
       "attribution": {
         "mover": {
           "status": "NEEDS CONFIRMATION",
-          "reason": "name not spoken in a move/second phrase near the motion; AI guess not used",
+          "reason": "name not spoken in a move/second phrase near the motion; suggested name not used",
           "ai_suggestion": "Okafor"
         },
         "seconder": {
           "status": "NEEDS CONFIRMATION",
-          "reason": "name not spoken in a move/second phrase near the motion; AI guess not used",
+          "reason": "name not spoken in a move/second phrase near the motion; suggested name not used",
           "ai_suggestion": "Lindqvist"
         }
       }

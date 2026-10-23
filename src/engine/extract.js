@@ -483,7 +483,7 @@ export function extractMeeting({ transcript, roster, meeting_id, meeting_date, o
       if (attr?.status === "NEEDS CONFIRMATION") {
         const tail = attr.candidates?.length
           ? `"${attr.ai_suggestion}" matches more than one roster member: ${attr.candidates.join(", ")}.`
-          : `AI suggestion: ${attr.ai_suggestion}.`;
+          : `Suggested: ${attr.ai_suggestion}.`;
         open_questions.push(`Confirm ${field} for ${mot.id} (${mot.agenda_item}). ${tail}`);
       }
     }

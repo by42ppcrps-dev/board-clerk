@@ -751,7 +751,7 @@ const PAGE = `<!DOCTYPE html>
       li.appendChild(one);
     } else if (suggestion) {
       var guess = document.createElement("p");
-      guess.textContent = "AI suggestion: " + suggestion + ". Choose a roster name.";
+      guess.textContent = "Suggested: " + suggestion + ". Choose a roster name.";
       li.appendChild(guess);
     }
     var selectId = "roster-" + index + "-" + item.motion_id + "-" + item.field;
@@ -869,7 +869,7 @@ const PAGE = `<!DOCTYPE html>
       }
       closeList();
       var p = document.createElement("p");
-      appendInline(p, trimmed.replace(/^\\*(.+)\\*$/, "$1"));
+      appendInline(p, trimmed.replace(/^\\*([^*]+)\\*/, "$1"));
       host.appendChild(p);
     }
     closeList();
@@ -1310,6 +1310,11 @@ const PAGE = `<!DOCTYPE html>
       writeStored(stored);
       var started = await rpcTool("start_demo_board", { board_id: stored });
       if (started.isError) throw new Error(started.line);
+      try {
+        params.delete("reset");
+        var rest = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (rest ? "?" + rest : "") + window.location.hash);
+      } catch (e) {}
     } else if (validId(fromUrl)) {
       stored = fromUrl;
       writeStored(stored);

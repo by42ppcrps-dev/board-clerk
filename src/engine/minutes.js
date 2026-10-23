@@ -16,12 +16,12 @@ export function renderMinutes(meeting) {
   lines.push("");
   for (const item of meeting.items || []) {
     lines.push(`## ${item.agenda_item}`);
-    lines.push(`*@${item.timestamp}* — ${item.summary}`);
+    lines.push(`*@${item.timestamp}*: ${item.summary}`);
     lines.push("");
   }
   lines.push("## Motions");
   for (const mot of meeting.motions || []) {
-    lines.push(`### ${mot.id} — ${mot.agenda_item}`);
+    lines.push(`### ${mot.id}: ${mot.agenda_item}`);
     lines.push(`- **Motion:** ${mot.motion_text}`);
     lines.push(`- **Mover:** ${displayName(mot, "mover")}`);
     lines.push(`- **Seconder:** ${displayName(mot, "seconder")}`);
@@ -45,7 +45,7 @@ function displayName(m, field) {
     return attr.value || m[field];
   }
   if (attr?.status === "NEEDS CONFIRMATION") {
-    return `(needs confirm; AI guessed ${attr.ai_suggestion || m[field]})`;
+    return `(needs confirm; suggested ${attr.ai_suggestion || m[field]})`;
   }
   return m[field];
 }
