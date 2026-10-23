@@ -1,63 +1,57 @@
 # Friction log
 
-Draft from the October 5 and October 11, 2026 build. Times are estimates, not a stopwatch. "Observed once" means we did not reproduce it a second time.
+Board Clerk for Alexa+ (Amazon Build, Ship, Shape hackathon, Alexa+ track). Format per the event rules: task, steps, expected vs actual, severity, workaround, suggestion. Times are estimates.
 
-## a. `createMcpHandler` is path-agnostic, and `route` is not an option
+## 1. MCP server answered on paths we never mounted
+- Task: serve MCP only at `/mcp` on a Cloudflare Worker.
+- Steps: created the handler with `createMcpHandler` from `@modelcontextprotocol/server` 2.3.1, passed `route: "/mcp"`, and forwarded requests from the Worker's fetch handler.
+- Expected: tool calls only on `/mcp`, everything else 404.
+- Actual: tools ran on `POST /` and `POST /mcp/` too. The options type has no `route` field, so the value was ignored. Our Origin check and body cap only wrapped `/mcp`, so those other paths skipped them.
+- Severity: High (security controls could be bypassed).
+- Workaround: our own router that returns 404 for every path except `/`, `/health`, `/demo`, `/demo/transcript.txt` and `/mcp`.
+- Suggestion: one line in the Workers getting-started sample saying the handler is path-agnostic and the app must route, plus a type error if `route` is passed.
 
-Date: 2026-10-11 for the extra paths. Corrected the same day after reading the installed SDK. The path bug was reproduced, then fixed in our router. The "broken route option" explanation was wrong.
+## 2. No Origin validation by default, and our first allowlist was bypassable
+- Task: meet the 2025-11-25 transport rule that servers validate `Origin`.
+- Steps: wrote a custom allowlist that treated "same as the request URL" as our own origin.
+- Expected: requests from other sites rejected.
+- Actual: the handler does no Origin checks on purpose. Our first allowlist let a DNS-rebinding hostname pointed at local `wrangler dev` through. The SDK already exports `originValidationResponse` and `validateOriginHeader`, but the sample does not use them.
+- Severity: High.
+- Workaround: fixed allowlist (exact deployed host plus localhost rules), rejects `Origin: null` and https localhost, and the 403 does not echo the Origin.
+- Suggestion: call `originValidationResponse` in the Workers example by default, include a DNS-rebinding test, and accept an extra hostname for a deployed host.
 
-What happened: tools ran on `POST /` and `POST /mcp/` as well as `POST /mcp` when the worker forwarded every path to the handler. Origin checks and the 256 KB cap only wrapped `pathname === "/mcp"`, so those other paths skipped them. We had passed `route: "/mcp"`. Installed `@modelcontextprotocol/server` 2.3.1 `CreateMcpHandlerOptions` has no `route` field. `createMcpHandler` reads `legacy`, `onerror`, `responseMode`, `bus`, `maxSubscriptions`, `keepAliveMs`, and `maxRequestBodySize`. The docs say the fetch handler is mounted by the app. Our `route` value was ignored because it is not an option, not because a route check failed.
+## 3. Nowhere to keep household state for a stateless server
+- Task: let a board's confirmations and meetings survive across assistant sessions.
+- Steps: started with a stateless Streamable HTTP handler, considered Workers KV, then moved to a SQLite Durable Object per board.
+- Expected: Alexa+ docs to say where a self-hosted MCP server should keep per-household state.
+- Actual: Amazon documents account linking and authentication for add-ons, but nothing we found says where a self-hosted MCP server should keep per-household state such as meeting records. The HTTP session does not keep it.
+- Severity: Medium (about half a day lost choosing and wiring storage).
+- Workaround: one Durable Object per `board_id`.
+- Suggestion: a short Alexa+ page on per-household state for remote MCP servers, with a Durable Object or DynamoDB example.
 
-Impact: estimate, about 1 to 2 hours to notice the extra paths and add our own router. After `GET /`, `GET /health`, `GET /demo`, and `GET /demo/transcript.txt`, any other path is 404. `/mcp` always runs the origin check and the body cap.
+## 4. No path from the event rules to a real Alexa+ device
+- Task: run the server behind a real Alexa+ device.
+- Steps: read the rules and the resources page (Agent Skills, Streamable HTTP).
+- Expected: a click path to attach a third-party remote MCP server to a device.
+- Actual: we found Amazon's add-on toolkit docs (including the Local Inspector), but no path to attach a third-party remote MCP server to a real device during the event, so we built a simulated web page instead, as the rules allow.
+- Severity: Medium (about 2 hours, and no device test).
+- Workaround: simulated Alexa+ page that is a real MCP client, labelled as simulated on screen.
+- Suggestion: a single page that either shows the attach steps or says device attach is not available during the event.
 
-What would have helped: the getting-started sample saying, in one line, that `createMcpHandler` does not take a path and the worker must 404 every other pathname.
+## 5. Inspector CLI output buried the useful data
+- Task: chain calls in MCP Inspector CLI (create an approval request, then approve it by id).
+- Steps: ran `tools/call` against the remote server and read the result.
+- Expected: easy access to returned ids.
+- Actual: the CLI shows the text content first, and pulling an id out of text was awkward.
+- Severity: Low (under an hour).
+- Workaround: return `structuredContent` alongside text from every tool.
+- Suggestion: print `structuredContent` first in the CLI when it is present.
 
-## b. `createMcpHandler` does not validate Origin, and our first allowlist was bypassable
-
-Date: 2026-10-11. The bypass was reproduced in review (H1), then fixed. The "SDK has no Origin validation" part was wrong once we read the installed package. Not observed once for the bypass after the fix.
-
-What happened: the 2025-11-25 transport spec says servers validate `Origin`. `createMcpHandler` is deliberately validation-free. Its own comment says to put Origin and Host checks in front of `fetch`. The same package exports `originValidationResponse`, `validateOriginHeader`, and `localhostAllowedOrigins`, and `WebStandardStreamableHTTPServerTransport` can check `allowedOrigins` when DNS-rebinding protection is turned on. We did not use those helpers. We wrote an allowlist. The first version treated "same as the request URL" as the worker's own origin. A DNS-rebind name pointed at local `wrangler dev` could send `Origin: http://evil.example` to `http://evil.example/mcp` and pass. `https://localhost` and `Origin: null` are rejected. A missing `Origin` is allowed. The 403 body does not echo `Origin`. The helpers' localhost lists would not have allowed our `https://*.workers.dev` host by themselves, so a custom rule was still required.
-
-Impact: estimate, about 2 to 3 hours for the allowlist, plus about another hour after review showed the rebinding hole.
-
-What would have helped: the Workers example calling `originValidationResponse` by default, with the DNS-rebinding case in its tests, and one extra hostname argument for a deployed host.
-
-## c. Stateless Streamable HTTP, and no Alexa+ note on where household state lives
-
-Date: 2026-10-05 the status note still listed a Workers KV binding as not done. Date: 2026-10-11 we stored state in a SQLite Durable Object, one instance per `board_id` (`BoardState`). The "no Alexa+ guidance" part was observed once.
-
-What happened: a stateless Streamable HTTP handler does not keep confirmations or ingested meetings across sessions. Cross-session memory has to live somewhere else. We used the Durable Object. We did not find Alexa+ documentation that says where per-household state should live for a self-hosted MCP server.
-
-Impact: estimate, about half a day choosing KV versus a Durable Object and wiring the DO. The docs gap did not get a second look.
-
-What would have helped: one page that says where a self-hosted MCP server should keep per-household state, and that the HTTP session will not do it.
-
-## d. No path from the event rules to a real Alexa+ device
-
-Date: 2026-10-11. Observed once.
-
-What happened: the event rules allow a self-hosted MCP server or a simulated experience. On the event resources page we found "Build with Agent Skills" and "Streamable HTTP transport", and no click-path we could follow to attach this remote server to a real Alexa+ device, so the demo is the simulated web page. We did not try a second time. This note is that we still have no device attach path.
-
-Impact: estimate, about 2 hours reading the rules and deciding to build the page instead of blocking on a device.
-
-What would have helped: a single page that either shows the click-path to attach a remote MCP server to an Alexa+ device, or says that path is not available during the event.
-
-## e. Inspector CLI worked; text ids were awkward
-
-Date: 2026-10-11. Observed once for the remote call. Not re-run against the public host in this round.
-
-What happened: MCP Inspector CLI completed `tools/call` against the remote server. Passing a JSON array argument (the roster) worked. Pulling an id out of the text content was awkward. `structuredContent` on the tool result fixed that for clients that read it. No Inspector transcript is saved in this repo, so this item is an unreproduced note, not a log a judge can open.
-
-Impact: estimate, under an hour.
-
-What would have helped: Inspector printing `structuredContent` as the default result, and the SDK treating structured content as the normal tool result instead of an extra field beside a text blob.
-
-## f. Wrangler 3.114 upgrade warning, and OAuth did not survive a restore
-
-Date: 2026-10-11. Observed once.
-
-What happened: Wrangler 3.114 printed a warning to upgrade to Wrangler 4. On a headless box, `wrangler` OAuth login did not survive a machine restore. An API token was required. This repo does not contain that token, and it does not contain the warning text. Treat this as an unreproduced note.
-
-Impact: the warning is immediate. The login loss cost a second login. Estimate, 30 to 60 minutes, and it blocked deploy until a token existed.
-
-What would have helped: login state that survives a restore, or a headless-first token path that the warning points at. A Wrangler 4 upgrade note that says what breaks if you stay on 3.114.
+## 6. Wrangler login lost after a machine restore
+- Task: deploy from a headless build machine.
+- Steps: `wrangler login` (OAuth), then the machine was restored from a snapshot.
+- Expected: login to survive, or a clear message.
+- Actual: the login was gone and the deploy failed until we created an API token. Wrangler 3.114 also printed an upgrade-to-4 warning with no note on what breaks if you stay.
+- Severity: Low to Medium (30 to 60 minutes, deploy blocked meanwhile).
+- Workaround: scoped API token in the environment.
+- Suggestion: point headless users to the token path in the login error, and say what changes in Wrangler 4.
