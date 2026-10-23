@@ -285,6 +285,18 @@ export function confirmMoverSeconder(
   const meeting = findMeeting(meetings, meeting_id);
   const mot = meeting.motions.find((x) => x.id === motion_id);
   if (!mot) throw new Error(`Motion ${motion_id} not found`);
+  const other = field === "mover" ? "seconder" : "mover";
+  const applied = applyConfirms(meeting, confirms).motions.find((x) => x.id === motion_id);
+  const otherAttr = applied?.attribution?.[other];
+  const otherName =
+    otherAttr?.status === "SPOKEN" || otherAttr?.status === "CONFIRMED BY CLERK"
+      ? String(otherAttr.value || applied[other] || "").trim()
+      : "";
+  if (otherName && otherName.toLowerCase() === trimmed.toLowerCase()) {
+    throw new Error(
+      `${trimmed} is already the ${other} on ${motion_id}. The mover and seconder must be different people.`,
+    );
+  }
   const attr = mot.attribution?.[field];
   const rec = {
     meeting_id,

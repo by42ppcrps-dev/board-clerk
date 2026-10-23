@@ -255,6 +255,40 @@ describe("MCP streamable HTTP", () => {
     assert.equal(repeated.data.approver_name, "Demo Judge");
   });
 
+  it("refuses to confirm the same person as both mover and seconder", async () => {
+    const { call } = await openSession(new MemoryStore());
+    const board_id = "same-person-board";
+    const ingested = await tool(call, "ingest_meeting", {
+      board_id,
+      transcript,
+      meeting_date: "2026-10-15",
+      roster: ROSTER,
+    });
+    assert.equal(ingested.isError, false, JSON.stringify(ingested.data));
+    const meeting_id = ingested.data.meeting_id;
+    const pending = await tool(call, "list_pending_confirmations", { board_id, meeting_id });
+    const mover = pending.data.pending.find((item) => item.field === "mover");
+    const seconder = pending.data.pending.find((item) => item.field === "seconder" && item.motion_id === mover.motion_id);
+    assert.ok(mover && seconder, JSON.stringify(pending.data.pending));
+    const first = await tool(call, "confirm_mover_seconder", {
+      board_id, meeting_id, motion_id: mover.motion_id, field: "mover", value: "grace",
+    });
+    assert.equal(first.isError, false, JSON.stringify(first.data));
+    const same = await tool(call, "confirm_mover_seconder", {
+      board_id, meeting_id, motion_id: mover.motion_id, field: "seconder", value: "Grace Lindqvist",
+    });
+    assert.equal(same.isError, true);
+    assert.match(same.data.error, /different people/);
+    const still = await tool(call, "list_pending_confirmations", { board_id, meeting_id });
+    assert.equal(still.data.count, 1);
+    const other = await tool(call, "confirm_mover_seconder", {
+      board_id, meeting_id, motion_id: mover.motion_id, field: "seconder", value: "trevino",
+    });
+    assert.equal(other.isError, false, JSON.stringify(other.data));
+    const done = await tool(call, "list_pending_confirmations", { board_id, meeting_id });
+    assert.equal(done.data.count, 0);
+  });
+
   it("holds an ambiguous speaker for the clerk and refuses approval until a single roster member is chosen", async () => {
     const { call } = await openSession(new MemoryStore());
     const board_id = "dana-ambiguity";

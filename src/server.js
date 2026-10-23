@@ -465,7 +465,7 @@ export function createBoardServer({ env, store } = {}) {
       const board_id = boardOf(args);
       const { meetings, confirms } = await loadBoard(ctx.env, ctx.store, board_id);
       const pending = listPendingConfirmations(meetings, args.meeting_id, confirms, rosterOf(meetings, board_id));
-      return toolResult(`${pending.count} mover or seconder fields need confirmation.`, { board_id, ...pending });
+      return toolResult(`${pending.count} mover or seconder ${pending.count === 1 ? "field needs" : "fields need"} confirmation.`, { board_id, ...pending });
     }),
   );
 
